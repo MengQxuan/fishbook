@@ -1,8 +1,10 @@
+# 神经网络的前向处理
 import numpy as np
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
+# 恒等函数
 def identity_function(x):
     return x
 
