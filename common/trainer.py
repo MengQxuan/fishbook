@@ -1,6 +1,6 @@
-# coding: utf-8
 import sys, os
-sys.path.append(os.pardir)  # 为了导入父目录的文件而进行的设定
+#sys.path.append(os.pardir)  # 为了导入父目录的文件而进行的设定
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 import numpy as np
 from common.optimizer import *
 
@@ -8,9 +8,9 @@ class Trainer:
     """进行神经网络的训练的类
     """
     def __init__(self, network, x_train, t_train, x_test, t_test,
-                 epochs=20, mini_batch_size=100,
-                 optimizer='SGD', optimizer_param={'lr':0.01}, 
-                 evaluate_sample_num_per_epoch=None, verbose=True):
+                epochs=20, mini_batch_size=100,
+                optimizer='SGD', optimizer_param={'lr':0.01}, 
+                evaluate_sample_num_per_epoch=None, verbose=True):
         self.network = network
         self.verbose = verbose
         self.x_train = x_train

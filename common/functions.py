@@ -44,6 +44,14 @@ def mean_squared_error(y, t):
 
 
 def cross_entropy_error(y, t):
+    """
+    计算交叉熵误差
+    参数:
+        y: 预测概率分布，形状为(batch_size, num_classes)或(num_classes,)
+        t: 监督标签，可以是one-hot向量或标签索引，形状为(batch_size, num_classes)或(batch_size,)
+    返回值:
+        float: 批次的平均交叉熵误差
+    """
     if y.ndim == 1:
         t = t.reshape(1, t.size)
         y = y.reshape(1, y.size)
@@ -51,7 +59,7 @@ def cross_entropy_error(y, t):
     # 监督数据是one-hot-vector的情况下，转换为正确解标签的索引
     if t.size == y.size:
         t = t.argmax(axis=1)
-             
+
     batch_size = y.shape[0]
     return -np.sum(np.log(y[np.arange(batch_size), t] + 1e-7)) / batch_size
 
