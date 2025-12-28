@@ -1,4 +1,4 @@
-# 神经网络的推理处理
+# 神经网络的推理处理 - 批处理
 import sys, os
 #sys.path.append(os.pardir)  # 为了导入父目录的文件而进行的设定
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
