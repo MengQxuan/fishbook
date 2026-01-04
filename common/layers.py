@@ -9,6 +9,7 @@ class Relu:
         self.mask = None
 
     def forward(self, x):
+        # 前向传播，将小于等于0的元素置为0
         self.mask = (x <= 0)
         out = x.copy()
         out[self.mask] = 0
@@ -16,6 +17,7 @@ class Relu:
         return out
 
     def backward(self, dout):
+        # 反向传播，小于等于0的元素的梯度为0
         dout[self.mask] = 0
         dx = dout
 
@@ -27,11 +29,13 @@ class Sigmoid:
         self.out = None
 
     def forward(self, x):
+        # 前向传播，计算sigmoid激活
         out = sigmoid(x)
         self.out = out
         return out
 
     def backward(self, dout):
+        # 反向传播，计算sigmoid的梯度
         dx = dout * (1.0 - self.out) * self.out
 
         return dx
@@ -39,7 +43,7 @@ class Sigmoid:
 
 class Affine:
     def __init__(self, W, b):
-        self.W =W
+        self.W = W
         self.b = b
         
         self.x = None
@@ -49,6 +53,7 @@ class Affine:
         self.db = None
 
     def forward(self, x):
+        # 前向传播，计算仿射变换
         # 对应张量
         self.original_x_shape = x.shape
         x = x.reshape(x.shape[0], -1)
@@ -59,6 +64,7 @@ class Affine:
         return out
 
     def backward(self, dout):
+        # 反向传播，计算仿射变换的梯度
         dx = np.dot(dout, self.W.T)
         self.dW = np.dot(self.x.T, dout)
         self.db = np.sum(dout, axis=0)
@@ -69,11 +75,12 @@ class Affine:
 
 class SoftmaxWithLoss:
     def __init__(self):
-        self.loss = None
+        self.loss = None # 损失
         self.y = None # softmax的输出
         self.t = None # 监督数据
 
     def forward(self, x, t):
+        # 前向传播，计算softmax的损失
         self.t = t
         self.y = softmax(x)
         self.loss = cross_entropy_error(self.y, self.t)
@@ -81,6 +88,7 @@ class SoftmaxWithLoss:
         return self.loss
 
     def backward(self, dout=1):
+        # 反向传播，计算softmax的梯度
         batch_size = self.t.shape[0]
         if self.t.size == self.y.size: # 监督数据是one-hot-vector的情况
             dx = (self.y - self.t) / batch_size
@@ -101,6 +109,7 @@ class Dropout:
         self.mask = None
 
     def forward(self, x, train_flg=True):
+        # 前向传播，根据训练标志决定是否执行dropout
         if train_flg:
             self.mask = np.random.rand(*x.shape) > self.dropout_ratio
             return x * self.mask
@@ -108,6 +117,7 @@ class Dropout:
             return x * (1.0 - self.dropout_ratio)
 
     def backward(self, dout):
+        # 反向传播，计算dropout的梯度
         return dout * self.mask
 
 
@@ -133,6 +143,7 @@ class BatchNormalization:
         self.dbeta = None
 
     def forward(self, x, train_flg=True):
+        # 前向传播，根据训练标志决定是否执行批量归一化
         self.input_shape = x.shape
         if x.ndim != 2:
             N, C, H, W = x.shape
@@ -143,6 +154,7 @@ class BatchNormalization:
         return out.reshape(*self.input_shape)
             
     def __forward(self, x, train_flg):
+        # 实际执行批量归一化的前向传播
         if self.running_mean is None:
             N, D = x.shape
             self.running_mean = np.zeros(D)
@@ -169,6 +181,7 @@ class BatchNormalization:
         return out
 
     def backward(self, dout):
+        # 反向传播，计算批量归一化的梯度
         if dout.ndim != 2:
             N, C, H, W = dout.shape
             dout = dout.reshape(N, -1)
@@ -179,6 +192,7 @@ class BatchNormalization:
         return dx
 
     def __backward(self, dout):
+        # 实际执行批量归一化的反向传播
         dbeta = dout.sum(axis=0)
         dgamma = np.sum(self.xn * dout, axis=0)
         dxn = self.gamma * dout
@@ -212,6 +226,7 @@ class Convolution:
         self.db = None
 
     def forward(self, x):
+        # 前向传播，执行卷积操作
         FN, C, FH, FW = self.W.shape
         N, C, H, W = x.shape
         out_h = 1 + int((H + 2*self.pad - FH) / self.stride)
@@ -230,6 +245,7 @@ class Convolution:
         return out
 
     def backward(self, dout):
+        # 反向传播，计算卷积层的梯度
         FN, C, FH, FW = self.W.shape
         dout = dout.transpose(0,2,3,1).reshape(-1, FN)
 
@@ -254,6 +270,7 @@ class Pooling:
         self.arg_max = None
 
     def forward(self, x):
+        # 前向传播，执行池化操作
         N, C, H, W = x.shape
         out_h = int(1 + (H - self.pool_h) / self.stride)
         out_w = int(1 + (W - self.pool_w) / self.stride)
@@ -271,6 +288,7 @@ class Pooling:
         return out
 
     def backward(self, dout):
+        # 反向传播，计算池化层的梯度
         dout = dout.transpose(0, 2, 3, 1)
         
         pool_size = self.pool_h * self.pool_w
