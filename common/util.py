@@ -38,33 +38,78 @@ def conv_output_size(input_size, filter_size, stride=1, pad=0):
 
 def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
     """
+    将输入的 4D 张量按卷积/池化的滑窗规则展开为 2D 矩阵（im2col）。
 
-    Parameters
-    ----------
-    input_data : 由(数据量, 通道, 高, 长)的4维数组构成的输入数据
-    filter_h : 滤波器的高
-    filter_w : 滤波器的长
-    stride : 步幅
-    pad : 填充
+    目的
+    ----
+    把“每个输出位置对应的一块局部区域（receptive field）”摊平成一行，
+    从而将卷积/池化运算改写为矩阵乘法或批量点积，提高 numpy 实现的效率。
 
-    Returns
-    -------
-    col : 2维数组
+    参数
+    ----
+    input_data : ndarray, shape = (N, C, H, W)
+        N: 样本数（batch size）
+        C: 通道数
+        H: 输入高
+        W: 输入宽
+    filter_h : int
+        滤波器（窗口）的高 FH
+    filter_w : int
+        滤波器（窗口）的宽 FW
+    stride : int
+        步幅 S
+    pad : int
+        填充 P（四周补 0 的像素数）
+
+    返回
+    ----
+    col : ndarray, shape = (N*out_h*out_w, C*filter_h*filter_w)
+        每一行是一个输出位置对应的窗口展开后的向量。
+        行数：所有样本、所有输出位置的总数
+        列数：一个窗口的元素总数（C*FH*FW）
     """
+    # 输入维度
     N, C, H, W = input_data.shape
-    out_h = (H + 2*pad - filter_h)//stride + 1
-    out_w = (W + 2*pad - filter_w)//stride + 1
 
-    img = np.pad(input_data, [(0,0), (0,0), (pad, pad), (pad, pad)], 'constant')
+    # 卷积/池化输出空间尺寸（整除保证是整数）
+    # out_h = (H + 2P - FH) / S + 1
+    # out_w = (W + 2P - FW) / S + 1
+    out_h = (H + 2 * pad - filter_h) // stride + 1
+    out_w = (W + 2 * pad - filter_w) // stride + 1
+
+    # 对输入做 padding：只在 H/W 维补 0，N/C 维不变
+    # pad 后 img shape = (N, C, H+2P, W+2P)
+    img = np.pad(
+        input_data,
+        [(0, 0), (0, 0), (pad, pad), (pad, pad)],
+        mode='constant'
+    )
+
+    # 先用 6D 数组暂存“窗口采样结果”
+    # col[n, c, y, x, oh, ow] 表示：
+    # 第 n 个样本、第 c 个通道，
+    # 窗口内部偏移 (y, x)，输出位置 (oh, ow) 对应的那个输入像素
     col = np.zeros((N, C, filter_h, filter_w, out_h, out_w))
 
+    # 遍历窗口内部坐标 (y, x)，用切片一次性取出所有输出位置 (oh, ow) 的值
     for y in range(filter_h):
-        y_max = y + stride*out_h
+        # y:y_max:stride 会产生 out_h 个采样点
+        # 右边界用 y + stride*out_h 才能覆盖到最后一个点（切片右边界不包含）
+        y_max = y + stride * out_h
+
         for x in range(filter_w):
-            x_max = x + stride*out_w
+            x_max = x + stride * out_w
+
+            # img[:, :, y:y_max:stride, x:x_max:stride] 的 shape = (N, C, out_h, out_w)
+            # 直接填入 col 在该 (y, x) 偏移处对应的所有窗口位置
             col[:, :, y, x, :, :] = img[:, :, y:y_max:stride, x:x_max:stride]
 
-    col = col.transpose(0, 4, 5, 1, 2, 3).reshape(N*out_h*out_w, -1)
+    # 将 6D 的 col 调整维度顺序并 reshape 为 2D：
+    # (N, C, FH, FW, out_h, out_w)
+    #   -> transpose -> (N, out_h, out_w, C, FH, FW)
+    #   -> reshape   -> (N*out_h*out_w, C*FH*FW)
+    col = col.transpose(0, 4, 5, 1, 2, 3).reshape(N * out_h * out_w, -1)
+
     return col
 
 
